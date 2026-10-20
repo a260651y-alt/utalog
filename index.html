@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="うたログ">
+<meta name="theme-color" content="#F2F1F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16132A" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>うたログ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F1F7; --surface:#FFFFFF; --ink:#1F1B3D; --muted:#77729A; --line:#DCD9E8;
+  --wipe:#E0306A; --blue:#3358D4; --unsung:#B9B5CF; --shadow:0 8px 24px rgba(31,27,61,.12);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#16132A; --surface:#211D3A; --ink:#EDEAF8; --muted:#9C97B8; --line:#353055;
+    --wipe:#FF5C8F; --blue:#8DA2FF; --unsung:#4A4570; --shadow:0 8px 24px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"M PLUS 1p",system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:720px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+h1{font-size:28px;font-weight:800;margin:0;letter-spacing:.02em}
+h1 .wipe{--p:62%}
+.sub{color:var(--muted);font-size:13px}
+
+/* 歌詞ワイプ：点数に応じて曲名に色が入る */
+.wipe{position:relative;display:inline-block;color:var(--unsung);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+.wipe::after{content:attr(data-t);position:absolute;inset:0 auto 0 0;width:var(--p);overflow:hidden;color:var(--wipe);white-space:nowrap}
+
+nav{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:14px}
+nav button{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:700;padding:8px;border-radius:9px;cursor:pointer}
+nav button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+.search{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:16px;margin-bottom:10px}
+.list{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 4px;border-bottom:1px solid var(--line);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;text-align:left;color:inherit;font:inherit;width:100%}
+.row:hover{background:color-mix(in srgb,var(--surface) 60%,transparent)}
+.row .title{font-size:19px;font-weight:700;min-width:0}
+.row .meta{grid-column:1;color:var(--muted);font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .score{grid-row:1/3;grid-column:2;text-align:right;align-self:center}
+.score b{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.score small{display:block;color:var(--muted);font-size:12px}
+.chip{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:0 6px;font-size:12px;margin-right:4px;color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:48px 12px}
+.empty button{margin-top:12px}
+
+.fab{position:fixed;right:max(16px,calc(50% - 344px));bottom:calc(20px + env(safe-area-inset-bottom));background:var(--wipe);color:#fff;border:0;border-radius:999px;padding:14px 22px;font:inherit;font-weight:800;font-size:16px;box-shadow:var(--shadow);cursor:pointer}
+
+/* フォーム */
+.sheet{position:fixed;inset:0;background:rgba(10,8,25,.5);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.sheet.open{display:flex}
+.panel{background:var(--surface);width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(24px + env(safe-area-inset-bottom))}
+.panel h2{margin:0 0 12px;font-size:19px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.full{grid-column:1/-1}
+label{display:flex;flex-direction:column;font-size:13px;color:var(--muted);gap:4px}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 10px;width:100%}
+textarea{resize:vertical;min-height:60px}
+details{grid-column:1/-1;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+summary{cursor:pointer;font-size:14px;font-weight:700}
+details .grid{margin-top:10px;grid-template-columns:repeat(3,1fr)}
+.wrow{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line)}
+.wmain{background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit;cursor:pointer;min-width:0;display:flex;flex-direction:column}
+.wmain .title{font-size:19px;font-weight:700}
+.wmain .meta{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wside{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.wside b{color:var(--ink);font-size:16px}
+.btn.small{padding:5px 12px;font-size:13px}
+.chip.done{color:var(--wipe);border-color:var(--wipe)}
+h3.group{font-size:14px;color:var(--muted);margin:18px 0 0}
+.shot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:wait}
+.actions{display:flex;gap:8px;margin-top:16px}
+.btn{border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-weight:700;padding:10px 16px;border-radius:10px;cursor:pointer}
+.btn.primary{background:var(--wipe);border-color:var(--wipe);color:#fff;flex:1}
+.btn.danger{color:var(--wipe)}
+
+/* 曲ごと */
+.song .meta b{color:var(--ink)}
+svg.spark{display:block}
+
+/* グラフ */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px}
+.stat span{display:block;color:var(--muted);font-size:12px}
+.stat b{font-size:20px;font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.card h3{margin:0 0 8px;font-size:15px}
+.filter{display:flex;gap:8px;margin-bottom:10px}
+.filter select{width:auto}
+ol.top{margin:0;padding-left:1.4em}
+ol.top li{padding:3px 0}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+.toast.show{opacity:1}
+.hright{display:flex;gap:10px;align-items:center}
+.ssec{margin-top:18px}
+.ssec h3{font-size:15px;margin:0 0 4px}
+.ssec .sub{margin:0 0 8px}
+.loading{color:var(--muted);text-align:center;padding:40px}
+@media (max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}details .grid{grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="wipe" data-t="うたログ">うたログ</span></h1>
+    <div class="hright"><span class="sub" id="count"></span><button class="btn small" id="setBtn">設定</button></div>
+  </header>
+  <nav role="tablist">
+    <button role="tab" data-tab="history" aria-selected="true">履歴</button>
+    <button role="tab" data-tab="songs" aria-selected="false">曲ごと</button>
+    <button role="tab" data-tab="graph" aria-selected="false">グラフ</button>
+    <button role="tab" data-tab="wish" aria-selected="false">歌いたい</button>
+  </nav>
+  <main id="view"><p class="loading">読み込み中…</p></main>
+</div>
+
+<button class="fab" id="addBtn">＋ 記録する</button>
+
+<div class="sheet" id="sheet">
+  <div class="panel" role="dialog" aria-labelledby="formTitle">
+    <h2 id="formTitle">記録する</h2>
+    <div class="shot">
+      <button class="btn" id="shotBtn" type="button">スクショから読み取る</button>
+      <input type="file" id="shotInput" accept="image/*" multiple hidden>
+      <span class="sub" id="shotStatus"></span>
+    </div>
+    <div class="grid">
+      <label class="full">曲名<input id="f-title" list="dl-title" autocomplete="off"></label>
+      <label class="full">アーティスト<input id="f-artist" list="dl-artist" autocomplete="off"></label>
+      <label>点数<input id="f-score" type="number" step="0.001" min="0" max="100" inputmode="decimal"></label>
+      <label>音程正確率 (%)<input id="f-pitch" type="number" step="0.1" min="0" max="100" inputmode="decimal"></label>
+      <label>採点<select id="f-machine">
+        <option>DAM 精密採点Ai</option><option>DAM 精密採点Ai Heart</option>
+        <option>JOYSOUND 分析採点マスター</option><option>JOYSOUND 分析採点AI</option><option>その他</option>
+      </select></label>
+      <label>キー<select id="f-key"></select></label>
+      <label>日付<input id="f-date" type="date"></label>
+      <label>お店<input id="f-place" list="dl-place" autocomplete="off"></label>
+      <details id="f-details">
+        <summary>細かい項目（任意）</summary>
+        <div class="grid">
+          <label>安定性<input id="f-stability" type="number" step="any" inputmode="decimal"></label>
+          <label>表現力<input id="f-expression" type="number" step="any" inputmode="decimal"></label>
+          <label>リズム<input id="f-rhythm" type="number" step="any" inputmode="decimal"></label>
+          <label>ビブラート<input id="f-vibrato" type="number" step="any" inputmode="decimal"></label>
+          <label>ロングトーン<input id="f-longtone" type="number" step="any" inputmode="decimal"></label>
+          <label>最高音<input id="f-high" placeholder="例: hiA"></label>
+        </div>
+      </details>
+      <label class="full">メモ<textarea id="f-memo" placeholder="サビの裏声が安定した、など"></textarea></label>
+    </div>
+    <div class="actions">
+      <button class="btn danger" id="delBtn" hidden>削除</button>
+      <button class="btn" id="cancelBtn">閉じる</button>
+      <button class="btn primary" id="saveBtn">保存する</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="wsheet">
+  <div class="panel" role="dialog" aria-labelledby="wTitle">
+    <h2 id="wTitle">歌いたい曲を追加</h2>
+    <div class="grid">
+      <label class="full">曲名<input id="w-title" list="dl-title" autocomplete="off"></label>
+      <label class="full">アーティスト<input id="w-artist" list="dl-artist" autocomplete="off"></label>
+      <label>目標点<input id="w-target" type="number" step="0.001" min="0" max="100" inputmode="decimal"></label>
+      <label>練習キー<select id="w-key"></select></label>
+      <label class="full">状態<select id="w-status"><option>練習中</option><option>いつか歌いたい</option></select></label>
+      <label class="full">メモ<textarea id="w-memo" placeholder="サビ前のブレスを意識、など"></textarea></label>
+    </div>
+    <div class="actions">
+      <button class="btn danger" id="wDel" hidden>削除</button>
+      <button class="btn" id="wCancel">閉じる</button>
+      <button class="btn primary" id="wSave">保存する</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="ssheet">
+  <div class="panel" role="dialog" aria-labelledby="sTitle">
+    <h2 id="sTitle">設定</h2>
+    <div class="ssec">
+      <h3>スクショ読み取り</h3>
+      <p class="sub">APIキーがないときは、iPhone内の文字認識で点数・音程正確率などの数字だけ読み取ります（無料、精度は低め）。Claude APIのキーを入れると、曲名や各項目までまとめて読み取れます（使った分だけ課金）。</p>
+      <label>Claude APIキー<input id="s-key" type="password" autocomplete="off" placeholder="sk-ant-..."></label>
+      <p class="sub" id="s-keystate" style="margin-top:6px"></p>
+      <div class="tools"><button class="btn" id="sKeySave">キーを保存</button><button class="btn danger" id="sKeyClear">キーを消す</button></div>
+    </div>
+    <div class="ssec">
+      <h3>バックアップ</h3>
+      <p class="sub">記録はこのiPhoneの中だけに保存されます。もしもの時のために、ときどきファイルに保存してください。</p>
+      <div class="tools"><button class="btn" id="bExport">ファイルに保存</button><button class="btn" id="bImport">ファイルから読み込む</button></div>
+      <input type="file" id="bFile" accept=".json,application/json,text/plain" hidden>
+      <details style="margin-top:12px"><summary>Claude版のデータを移す</summary>
+        <p class="sub">Claude版の「グラフ」タブで「書き出す」を押して出た文字を、ここに貼り付けてください。</p>
+        <textarea id="io"></textarea>
+        <button class="btn" id="bPaste" style="margin-top:8px">読み込む</button>
+      </details>
+    </div>
+    <div class="actions"><button class="btn primary" id="sClose">閉じる</button></div>
+  </div>
+</div>
+
+<datalist id="dl-title"></datalist><datalist id="dl-artist"></datalist><datalist id="dl-place"></datalist>
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY='karaoke-records-v1', WKEY='karaoke-wishlist-v1';
+let wishes=[], wEditing=null, records=[], tab='history', query='', editingId=null, graphMachine='all', loaded=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today=()=>new Date().toLocaleDateString('sv-SE');
+const num=v=>v===''||v==null?null:Number(v);
+const fmt=s=>s==null?'—':(Number.isInteger(s)?String(s):s.toFixed(3));
+const pct=s=>Math.max(0,Math.min(100,((s-60)/40)*100)); // 60点→0%, 100点→100%
+const wipe=(t,s)=>`<span class="wipe" style="--p:${s==null?0:pct(s)}%" data-t="${esc(t)}">${esc(t)}</span>`;
+const keyLabel=k=>!k?'原曲キー':(k>0?'+'+k:String(k));
+
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),1800)}
+
+async function load(){
+  try{records=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){records=[]}
+  try{wishes=JSON.parse(localStorage.getItem(WKEY)||'[]')}catch(e){wishes=[]}
+  loaded=true;render();
+}
+async function persist(){
+  try{localStorage.setItem(KEY,JSON.stringify(records))}
+  catch(e){toast('保存できませんでした。もう一度試してください')}
+}
+
+const sorted=()=>[...records].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.created-a.created);
+
+function render(){
+  if(!loaded)return;
+  $('count').textContent=records.length?`${records.length}件`:'';
+  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
+  fillDatalists();
+  const v=$('view');
+  $('addBtn').textContent=tab==='wish'?'＋ 曲を追加':'＋ 記録する';
+  if(tab==='wish'){v.innerHTML=renderWish();return}
+  if(!records.length){
+    v.innerHTML=`<div class="empty"><p>まだ記録がありません。<br>歌った曲と点数を残していきましょう。</p><button class="btn primary" onclick="openForm()">最初の記録をつける</button></div>`;
+    return;
+  }
+  if(tab==='history')v.innerHTML=renderHistory();
+  else if(tab==='songs')v.innerHTML=renderSongs();
+  else v.innerHTML=renderGraph();
+  const s=$('q'); if(s){const upd=e=>{if(e.isComposing)return;query=e.target.value;$('listArea').innerHTML=tab==='history'?historyList():songsList()};s.addEventListener('input',upd);s.addEventListener('compositionend',upd)}
+  const m=$('gm'); if(m)m.onchange=e=>{graphMachine=e.target.value;render()};
+}
+
+function match(r){const q=query.trim().toLowerCase();return !q||(r.title+' '+(r.artist||'')).toLowerCase().includes(q)}
+
+const searchBox=()=>`<input class="search" id="q" placeholder="曲名・アーティストで検索" value="${esc(query)}">`;
+function renderHistory(){return searchBox()+`<div id="listArea">${historyList()}</div>`}
+function historyList(){
+  const list=sorted().filter(match);
+  return `<div class="list">${list.map(r=>`
+    <button class="row" onclick="openForm('${r.id}')">
+      <span class="title">${wipe(r.title,r.score)}</span>
+      <span class="score"><b>${fmt(r.score)}</b><small>${r.pitch!=null?'音程 '+r.pitch+'%':''}</small></span>
+      <span class="meta">${esc(r.date||'')}　${esc(r.artist||'')}　<span class="chip">${esc(shortMachine(r.machine))}</span><span class="chip">${keyLabel(r.key)}</span></span>
+    </button>`).join('')||'<p class="empty">見つかりませんでした</p>'}</div>`;
+}
+function shortMachine(m){return (m||'').replace('精密採点','').replace('分析採点','').trim()||'—'}
+
+function groupSongs(){
+  const g={};
+  for(const r of records){const k=(r.title+'\u0000'+(r.artist||'')).toLowerCase();(g[k]??={title:r.title,artist:r.artist,items:[]}).items.push(r)}
+  return Object.values(g).map(s=>{
+    s.items.sort((a,b)=>(a.date||'').localeCompare(b.date||'')||a.created-b.created);
+    const sc=s.items.map(i=>i.score).filter(x=>x!=null);
+    s.best=sc.length?Math.max(...sc):null; s.avg=sc.length?sc.reduce((a,b)=>a+b,0)/sc.length:null;
+    s.last=s.items[s.items.length-1]; return s;
+  });
+}
+function spark(vals){
+  if(vals.length<2)return '';
+  const w=90,h=30,mn=Math.min(...vals),mx=Math.max(...vals),rg=mx-mn||1;
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1))*(w-6)+3},${h-3-((v-mn)/rg)*(h-6)}`).join(' ');
+  const last=pts.split(' ').pop().split(',');
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round"/><circle cx="${last[0]}" cy="${last[1]}" r="3" fill="var(--wipe)"/></svg>`;
+}
+function renderSongs(){return searchBox()+`<div id="listArea">${songsList()}</div>`}
+function songsList(){
+  const songs=groupSongs().filter(s=>match(s)).sort((a,b)=>(b.best??-1)-(a.best??-1));
+  return `<div class="list">${songs.map(s=>`
+    <button class="row song" onclick="query=${esc(JSON.stringify(s.title))};tab='history';render()">
+      <span class="title">${wipe(s.title,s.best)}</span>
+      <span class="score"><b>${fmt(s.best)}</b><small>${spark(s.items.map(i=>i.score).filter(x=>x!=null))}</small></span>
+      <span class="meta">${esc(s.artist||'')}　<b>${s.items.length}回</b>　平均 ${s.avg!=null?s.avg.toFixed(2):'—'}　最近 ${keyLabel(s.last.key)}</span>
+    </button>`).join('')||'<p class="empty">見つかりませんでした</p>'}</div>`;
+}
+
+function chart(list){
+  const vals=list.map(r=>r.score);
+  if(vals.length<2)return '<p class="sub">2件以上でグラフが出ます</p>';
+  const W=640,H=220,L=36,R=10,T=10,B=24;
+  const lo=Math.max(0,Math.floor((Math.min(...vals)-2)/5)*5),hi=100;
+  const x=i=>L+(i/(vals.length-1))*(W-L-R), y=v=>T+(1-(v-lo)/(hi-lo))*(H-T-B);
+  let grid='';for(let g=lo;g<=hi;g+=5){grid+=`<line x1="${L}" x2="${W-R}" y1="${y(g)}" y2="${y(g)}" stroke="var(--line)"/><text x="${L-6}" y="${y(g)+4}" font-size="11" text-anchor="end" fill="var(--muted)">${g}</text>`}
+  const pts=vals.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
+  // 移動平均（5回）
+  const ma=vals.map((_,i)=>{const s=vals.slice(Math.max(0,i-4),i+1);return s.reduce((a,b)=>a+b,0)/s.length});
+  const mapts=ma.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
+  const dots=list.map((r,i)=>`<circle cx="${x(i)}" cy="${y(r.score)}" r="3.5" fill="var(--wipe)"><title>${esc(r.date)} ${esc(r.title)} ${fmt(r.score)}</title></circle>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="点数の推移">${grid}
+    <polyline points="${pts}" fill="none" stroke="var(--unsung)" stroke-width="1.5"/>
+    <polyline points="${mapts}" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linejoin="round"/>${dots}
+    <text x="${L}" y="${H-6}" font-size="11" fill="var(--muted)">${esc(list[0].date)}</text>
+    <text x="${W-R}" y="${H-6}" font-size="11" fill="var(--muted)" text-anchor="end">${esc(list[list.length-1].date)}</text></svg>
+    <p class="sub" style="margin:4px 0 0">ピンク＝各回の点数、青＝直近5回の平均</p>`;
+}
+function renderGraph(){
+  const machines=[...new Set(records.map(r=>r.machine))];
+  const list=[...records].filter(r=>r.score!=null&&(graphMachine==='all'||r.machine===graphMachine))
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||'')||a.created-b.created);
+  const sc=list.map(r=>r.score);
+  const avg=sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(2):'—';
+  const best=sc.length?fmt(Math.max(...sc)):'—';
+  const days=new Set(list.map(r=>r.date)).size;
+  const songs=groupSongs();
+  const most=[...songs].sort((a,b)=>b.items.length-a.items.length).slice(0,5);
+  const pitchList=list.filter(r=>r.pitch!=null);
+  const pAvg=pitchList.length?(pitchList.reduce((a,r)=>a+r.pitch,0)/pitchList.length).toFixed(1)+'%':'—';
+  return `<div class="filter"><select id="gm"><option value="all">すべての採点</option>${machines.map(m=>`<option ${m===graphMachine?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
+  <div class="stats">
+    <div class="stat"><span>平均点</span><b>${avg}</b></div>
+    <div class="stat"><span>最高点</span><b>${best}</b></div>
+    <div class="stat"><span>平均音程</span><b>${pAvg}</b></div>
+    <div class="stat"><span>行った日数</span><b>${days}日</b></div>
+  </div>
+  <div class="card"><h3>点数の推移</h3>${chart(list)}</div>
+  <div class="card"><h3>よく歌う曲</h3><ol class="top">${most.map(s=>`<li>${esc(s.title)} <span class="sub">${s.items.length}回・ベスト ${fmt(s.best)}</span></li>`).join('')}</ol></div>`;
+}
+async function exportFile(){
+  const json=JSON.stringify({app:'utalog',version:1,exported:new Date().toISOString(),records,wishes});
+  const name=`utalog-backup-${today()}.json`;
+  const file=new File([json],name,{type:'application/json'});
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'うたログのバックアップ'});return}}
+  catch(e){if(e.name==='AbortError')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+async function importText(txt){
+  const raw=JSON.parse(txt);const arr=Array.isArray(raw)?raw:raw.records||[];const warr=Array.isArray(raw)?[]:raw.wishes||[];
+  const ids=new Set(records.map(r=>r.id)),wids=new Set(wishes.map(w=>w.id));let n=0;
+  for(const r of arr){if(r&&r.id&&r.title&&!ids.has(r.id)){records.push(r);n++}}
+  for(const w of warr){if(w&&w.id&&w.title&&!wids.has(w.id)){wishes.push(w);n++}}
+  await persist();await persistW();render();return n;
+}
+async function importFrom(getText){
+  try{const n=await importText(await getText());toast(`${n}件読み込みました`)}
+  catch(e){toast('読み込めませんでした。うたログで保存したデータか確認してください')}
+}
+function fillDatalists(){
+  const u=a=>[...new Set(a.filter(Boolean))].map(v=>`<option value="${esc(v)}">`).join('');
+  $('dl-title').innerHTML=u(records.map(r=>r.title));
+  $('dl-artist').innerHTML=u(records.map(r=>r.artist));
+  $('dl-place').innerHTML=u(records.map(r=>r.place));
+}
+
+const F=['title','artist','score','pitch','machine','key','date','place','memo','stability','expression','rhythm','vibrato','longtone','high'];
+const NUMS=['score','pitch','key','stability','expression','rhythm','vibrato','longtone'];
+function openForm(id){
+  editingId=id||null;
+  const r=id?records.find(x=>x.id===id):null;
+  const last=sorted()[0];
+  $('formTitle').textContent=r?'記録を編集':'記録する';
+  $('delBtn').hidden=!r;
+  for(const k of F){const el=$('f-'+k);el.value=r?(r[k]??''):''}
+  if(!r){$('f-date').value=today();$('f-key').value='0';if(last){$('f-machine').value=last.machine;$('f-place').value=last.date===today()?(last.place||''):''}}
+  $('shotStatus').textContent='結果画面を最大4枚まとめて選べます';$('f-details').open=false;
+  $('sheet').classList.add('open');setTimeout(()=>$('f-title').focus(),50);
+}
+function closeForm(){$('sheet').classList.remove('open')}
+$('f-title').addEventListener('change',e=>{
+  if(editingId)return;
+  const prev=sorted().find(r=>r.title===e.target.value);
+  if(prev){if(!$('f-artist').value)$('f-artist').value=prev.artist||'';$('f-key').value=String(prev.key??0)}
+});
+$('saveBtn').onclick=async()=>{
+  const d={};for(const k of F){const v=$('f-'+k).value.trim();d[k]=NUMS.includes(k)?num(v):v}
+  if(!d.title){toast('曲名を入れてください');$('f-title').focus();return}
+  if(d.score!=null&&(d.score<0||d.score>100)){toast('点数は0〜100で入れてください');return}
+  if(editingId){Object.assign(records.find(r=>r.id===editingId),d)}
+  else records.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),created:Date.now(),...d});
+  const hit=d.score!=null&&wishes.some(w=>sameSong(w,d)&&w.target!=null&&d.score>=w.target);
+  closeForm();render();await persist();toast(hit?'目標達成！おめでとう':editingId?'更新しました':'保存しました');
+};
+$('delBtn').onclick=async()=>{if(!confirm('この記録を削除しますか？'))return;records=records.filter(r=>r.id!==editingId);closeForm();render();await persist();toast('削除しました')};
+$('cancelBtn').onclick=closeForm;
+$('sheet').onclick=e=>{if(e.target.id==='sheet')closeForm()};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeForm();closeWish()}});
+$('addBtn').onclick=()=>tab==='wish'?openWish():openForm();
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
+$('f-key').innerHTML=Array.from({length:15},(_,i)=>i-7).map(k=>`<option value="${k}">${keyLabel(k)}</option>`).join('');
+
+const MACHINES=[...document.querySelectorAll('#f-machine option')].map(o=>o.value);
+function toB64(file){return new Promise((res,rej)=>{
+  const img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{const m=1600,k=Math.min(1,m/Math.max(img.width,img.height));const c=document.createElement('canvas');
+    c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',.9).split(',')[1])};
+  img.onerror=()=>rej(new Error('画像を開けません'));img.src=url})}
+const APIKEY='utalog-api-key';
+async function readWithClaude(files,apiKey,st){
+  st.textContent='読み取り中…';
+  const imgs=await Promise.all([...files].slice(0,4).map(toB64));
+  const prompt='これはカラオケ採点の結果画面のスクリーンショットです（DAMやJOYSOUNDなど。複数枚ある場合は同じ1回分の結果）。画面から読み取れる値だけを次のJSON形式で返してください。JSON以外は何も出力しないでください。\n'
+    +'{"title":曲名,"artist":歌手名,"score":総合点(数値),"pitch":音程正確率(%の数値),"stability":安定性(数値),"expression":表現力(数値),"rhythm":リズム(数値。タメ/ハシリなど数値でない表示ならnull),"vibrato":ビブラート(数値),"longtone":ロングトーン(数値),"high":最高音の表記(文字列),"machine":次のいずれか「'+MACHINES.join('」「')+'」,"key":原曲キーからの変更(-7〜7の整数)}\n'
+    +'読み取れない項目や自信のない項目はnullにしてください。推測で埋めないでください。';
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+    headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:"claude-sonnet-5-5",max_tokens:1000,messages:[{role:"user",content:[
+      ...imgs.map(d=>({type:"image",source:{type:"base64",media_type:"image/jpeg",data:d}})),{type:"text",text:prompt}]}]})});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(r.status===401?'APIキーが正しくないようです。設定で確認してください':'読み取りに失敗しました（'+(data.error?.message||r.status)+'）');
+  const text=(data.content||[]).map(i=>i.text||'').join('').replace(/```json|```/g,'');
+  return JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+}
+async function loadTesseract(){
+  if(window.Tesseract)return;
+  await new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    sc.onload=res;sc.onerror=()=>rej(new Error('文字認識を読み込めませんでした。ネットにつながっているか確認してください'));document.head.appendChild(sc)});
+}
+async function readWithOCR(files,st){
+  st.textContent='文字認識を準備中…（初回は少し時間がかかります）';
+  await loadTesseract();
+  const list=[...files].slice(0,4);let text='';
+  for(let i=0;i<list.length;i++){st.textContent=`文字認識中… ${i+1}/${list.length}`;const {data}=await Tesseract.recognize(list[i],'jpn+eng');text+='\n'+data.text}
+  return parseOCR(text);
+}
+function parseOCR(t){
+  const z=t.replace(/[０-９．％]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[ \t]+/g,'');
+  const ok=v=>v!=null&&v>=0&&v<=100?v:null;
+  const pick=label=>{const m=z.match(new RegExp(label+'[^\\d\\n]{0,8}(\\d{1,3}(?:\\.\\d+)?)'));return m?ok(+m[1]):null};
+  const sc=z.match(/(\d{2,3}\.\d{3})/);
+  return {score:sc?ok(+sc[1]):null,pitch:pick('音程(?:正確率)?'),stability:pick('安定性'),expression:pick('表現力'),vibrato:pick('ビブラート'),longtone:pick('ロングトーン')};
+}
+async function readShots(files){
+  if(!files.length)return;
+  const st=$('shotStatus'),btn=$('shotBtn');btn.disabled=true;
+  try{
+    const apiKey=localStorage.getItem(APIKEY);
+    const j=apiKey?await readWithClaude(files,apiKey,st):await readWithOCR(files,st);
+    let n=0;
+    for(const k of ['title','artist','score','pitch','stability','expression','rhythm','vibrato','longtone','high']){
+      if(j[k]!=null&&j[k]!==''){$('f-'+k).value=j[k];n++}}
+    if(MACHINES.includes(j.machine)){$('f-machine').value=j.machine;n++}
+    if(Number.isInteger(j.key)&&j.key>=-7&&j.key<=7){$('f-key').value=String(j.key);n++}
+    if(['stability','expression','rhythm','vibrato','longtone','high'].some(k=>j[k]!=null))$('f-details').open=true;
+    st.textContent=!n?'読み取れる値が見つかりませんでした。手で入力してください'
+      :`${n}項目を読み取りました。${apiKey?'':'曲名は手で入れてください。'}合っているか確認してから保存してください`;
+  }catch(e){st.textContent=e.message||'読み取れませんでした。別の画像を試すか、手で入力してください'}
+  finally{btn.disabled=false;$('shotInput').value=''}
+}
+$('shotBtn').onclick=()=>$('shotInput').click();
+$('shotInput').onchange=e=>readShots(e.target.files);
+
+/* 歌いたい曲リスト */
+const sameSong=(a,b)=>(a.title||'').trim().toLowerCase()===(b.title||'').trim().toLowerCase()
+  &&(!a.artist||!b.artist||a.artist.trim().toLowerCase()===b.artist.trim().toLowerCase());
+function bestFor(w){const sc=records.filter(r=>sameSong(w,r)&&r.score!=null).map(r=>r.score);return {best:sc.length?Math.max(...sc):null,n:records.filter(r=>sameSong(w,r)).length}}
+async function persistW(){try{localStorage.setItem(WKEY,JSON.stringify(wishes))}catch(e){toast('保存できませんでした。もう一度試してください')}}
+function wishRow(w){
+  const {best,n}=bestFor(w);
+  const done=best!=null&&w.target!=null&&best>=w.target;
+  const p=best==null?0:w.target!=null?Math.max(0,Math.min(100,(best-60)/(w.target-60)*100)):pct(best);
+  return `<div class="wrow">
+    <button class="wmain" onclick="openWish('${w.id}')">
+      <span class="title"><span class="wipe" style="--p:${p}%" data-t="${esc(w.title)}">${esc(w.title)}</span></span>
+      <span class="meta">${esc(w.artist||'')}　${w.key!=null?'<span class="chip">'+keyLabel(w.key)+'</span>':''}${done?'<span class="chip done">達成</span>':''}${esc(w.memo||'')}</span>
+    </button>
+    <div class="wside">
+      <span><b>${fmt(best)}</b> / ${w.target!=null?fmt(w.target):'目標なし'}</span>
+      <span>${n?n+'回歌った':'まだ歌ってない'}</span>
+      <button class="btn small" onclick="singWish('${w.id}')">歌った</button>
+    </div></div>`;
+}
+function renderWish(){
+  if(!wishes.length)return `<div class="empty"><p>歌えるようになりたい曲や、次に歌いたい曲を入れておけます。</p><button class="btn primary" onclick="openWish()">曲を追加する</button></div>`;
+  const by=st=>wishes.filter(w=>(w.status||'練習中')===st).sort((a,b)=>b.created-a.created);
+  const a=by('練習中'),b=by('いつか歌いたい');
+  return (a.length?`<h3 class="group">練習中</h3><div class="list">${a.map(wishRow).join('')}</div>`:'')
+    +(b.length?`<h3 class="group">いつか歌いたい</h3><div class="list">${b.map(wishRow).join('')}</div>`:'');
+}
+const WF=['title','artist','target','key','status','memo'];
+function openWish(id){
+  wEditing=id||null;const w=id?wishes.find(x=>x.id===id):null;
+  $('wTitle').textContent=w?'歌いたい曲を編集':'歌いたい曲を追加';$('wDel').hidden=!w;
+  for(const k of WF)$('w-'+k).value=w?(w[k]??''):'';
+  if(!w)$('w-status').value='練習中';
+  $('wsheet').classList.add('open');setTimeout(()=>$('w-title').focus(),50);
+}
+function closeWish(){$('wsheet').classList.remove('open')}
+function singWish(id){
+  const w=wishes.find(x=>x.id===id);openForm();
+  $('f-title').value=w.title;$('f-artist').value=w.artist||'';if(w.key!=null)$('f-key').value=String(w.key);
+}
+$('w-key').innerHTML='<option value="">未定</option>'+Array.from({length:15},(_,i)=>i-7).map(k=>`<option value="${k}">${keyLabel(k)}</option>`).join('');
+$('w-title').addEventListener('change',e=>{const prev=sorted().find(r=>r.title===e.target.value);if(prev&&!$('w-artist').value)$('w-artist').value=prev.artist||''});
+$('wSave').onclick=async()=>{
+  const d={};for(const k of WF){const v=$('w-'+k).value.trim();d[k]=(k==='target'||k==='key')?num(v):v}
+  if(!d.title){toast('曲名を入れてください');$('w-title').focus();return}
+  if(wEditing)Object.assign(wishes.find(w=>w.id===wEditing),d);
+  else wishes.push({id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),created:Date.now(),...d});
+  closeWish();render();await persistW();toast(wEditing?'更新しました':'追加しました');
+};
+$('wDel').onclick=async()=>{if(!confirm('この曲をリストから外しますか？'))return;wishes=wishes.filter(w=>w.id!==wEditing);closeWish();render();await persistW();toast('外しました')};
+$('wCancel').onclick=closeWish;
+$('wsheet').onclick=e=>{if(e.target.id==='wsheet')closeWish()};
+
+function keyState(){$('s-keystate').textContent=localStorage.getItem(APIKEY)?'APIキー保存済み：Claudeで読み取ります':'APIキーなし：iPhone内の文字認識で読み取ります'}
+function openSettings(){$('s-key').value='';keyState();$('ssheet').classList.add('open')}
+function closeSettings(){$('ssheet').classList.remove('open')}
+$('setBtn').onclick=openSettings;
+$('sClose').onclick=closeSettings;
+$('ssheet').onclick=e=>{if(e.target.id==='ssheet')closeSettings()};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSettings()});
+$('sKeySave').onclick=()=>{const v=$('s-key').value.trim();if(!v){toast('キーを入れてください');return}localStorage.setItem(APIKEY,v);$('s-key').value='';keyState();toast('保存しました')};
+$('sKeyClear').onclick=()=>{localStorage.removeItem(APIKEY);keyState();toast('消しました')};
+$('bExport').onclick=exportFile;
+$('bImport').onclick=()=>$('bFile').click();
+$('bFile').onchange=e=>{const f=e.target.files[0];if(f)importFrom(()=>f.text());e.target.value=''};
+$('bPaste').onclick=()=>importFrom(async()=>$('io').value);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+load();
+</script>
+</body>
+</html>
